@@ -25,7 +25,7 @@ Then run `composer install --dev` or `composer update --dev`.
 Check the examples folder. Each of the files has to be run from the command line e.g:
 
 ```shell
-php RequestReply/Broker.php
+php examples/RequestReply/Broker.php
 ```
 
 ## Examples
@@ -43,11 +43,11 @@ To see the example in action run the following commands:
 
 ```shell
 // First start the broker.
-php examples/Broker.php
+php examples/RequestReply/Broker.php
 
 // Then start a worker or 2 or 3.
-php examples/Worker.php
+php examples/RequestReply/Worker.php
 
 // Then run a client to see how the broker and the workers react.
-php examples/Client.php
+php examples/RequestReply/Client.php
 ```
