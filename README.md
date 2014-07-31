@@ -24,7 +24,7 @@ Then run `composer install --dev` or `composer update --dev`.
 
 Check the examples folder. Each of the files has to be run from the command line e.g:
 
-```bash
+```shell
 php RequestReply/Broker.php
 ```
 
@@ -41,7 +41,7 @@ The client itself also has retry and timeout limits.
 
 To see the example in action run the following commands:
 
-```bash
+```shell
 // First start the broker.
 php examples/Broker.php
 

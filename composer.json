@@ -9,6 +9,7 @@
       "email": "zjvren@geevcookie.com"
     }
   ],
+  "minimum-stability": "dev",
   "require-dev": {
     "phpunit/phpunit": "4.0.*",
     "moriony/php-zmq-stubs": "dev-master"
@@ -16,6 +17,11 @@
   "autoload": {
     "psr-4": {
       "GeevCookie\\ZMQ\\": "src"
+    }
+  },
+  "extra": {
+    "branch-alias": {
+      "dev-master": "1.0.x-dev"
     }
   }
 }
