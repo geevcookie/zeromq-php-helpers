@@ -2,6 +2,7 @@
 
 namespace GeevCookie\ZMQ\RetryClient;
 
+use Psr\Log\LoggerInterface;
 use ZMQ;
 use ZMQContext;
 use ZMQPoll;
@@ -95,7 +96,6 @@ class RetryClient
                 } elseif (--$retriesLeft == 0) {
                     throw new \Exception("Server seems to be offline. Abandoning!");
                 } else {
-                    echo "W: no response from server, retrying...", PHP_EOL;
                     //  Old socket will be confused; close it and open a new one
                     $this->connect($this->context);
                     //  Send request again, on new socket

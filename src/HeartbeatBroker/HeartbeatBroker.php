@@ -4,6 +4,7 @@ namespace GeevCookie\ZMQ\HeartbeatBroker;
 
 use GeevCookie\ZMQ\MultipartMessage;
 use GeevCookie\ZMQ\QueueIterator;
+use Psr\Log\LoggerInterface;
 use ZMQ;
 use ZMQPoll;
 
@@ -26,6 +27,11 @@ class HeartbeatBroker
     private $queue;
 
     /**
+     * @var \Psr\Log\LoggerInterface
+     */
+    private $logger;
+
+    /**
      * @var \ZMQSocket|null
      */
     private $clientChannel = null;
@@ -38,11 +44,13 @@ class HeartbeatBroker
     /**
      * @param BrokerConfig $config
      * @param QueueIterator $queue
+     * @param \Psr\Log\LoggerInterface $logger
      */
-    public function __construct(BrokerConfig $config, QueueIterator $queue)
+    public function __construct(BrokerConfig $config, QueueIterator $queue, LoggerInterface $logger)
     {
         $this->config = $config;
         $this->queue  = $queue;
+        $this->logger = $logger;
     }
 
     /**
@@ -60,6 +68,8 @@ class HeartbeatBroker
 
             return true;
         } catch (\ZMQSocketException $e) {
+            return false;
+        } catch (\ZMQException $e) {
             return false;
         } catch (\Exception $e) {
             return false;
@@ -131,12 +141,12 @@ class HeartbeatBroker
             if ($message->address() == "READY") {
                 $this->queue->deleteWorker($identity);
                 $this->queue->appendWorker($identity, $this->config->getInterval(), $this->config->getLiveness());
-                printf("I: Worker connected - %s%s", $identity, PHP_EOL);
+                $this->logger->info("Worker connected!", array($identity));
             } elseif ($message->address() == 'HEARTBEAT') {
-                printf("I: Got heartbeat from %s - %s%s", $identity, microtime(), PHP_EOL);
+                $this->logger->info("Got heartbeat from worker!", array($identity));
                 $this->queue->refreshWorker($identity, $this->config->getInterval(), $this->config->getLiveness());
             } else {
-                printf("E: invalid message from %s%s%s", $identity, PHP_EOL, $message->__toString());
+                $this->logger->error("Invalid message from worker!", array($identity, $message->__toString()));
             }
         } else {
             $message->setSocket($this->clientChannel)->send();

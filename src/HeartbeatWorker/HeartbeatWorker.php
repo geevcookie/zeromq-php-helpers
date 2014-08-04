@@ -3,6 +3,7 @@
 namespace GeevCookie\ZMQ\HeartbeatWorker;
 
 use GeevCookie\ZMQ\MultipartMessage;
+use Psr\Log\LoggerInterface;
 use ZMQ;
 use ZMQContext;
 use ZMQPoll;
@@ -18,6 +19,11 @@ class HeartbeatWorker
      * @var WorkerConfig
      */
     private $config;
+
+    /**
+     * @var \Psr\Log\LoggerInterface
+     */
+    private $logger;
 
     /**
      * @var ZMQSocket
@@ -36,10 +42,12 @@ class HeartbeatWorker
 
     /**
      * @param WorkerConfig $config
+     * @param \Psr\Log\LoggerInterface $logger
      */
-    public function __construct(WorkerConfig $config)
+    public function __construct(WorkerConfig $config, LoggerInterface $logger)
     {
         $this->config = $config;
+        $this->logger = $logger;
     }
 
     /**
@@ -62,7 +70,7 @@ class HeartbeatWorker
             $this->workerProcess->setSockOpt(ZMQ::SOCKOPT_LINGER, 0);
 
             //  Tell queue we're ready for work
-            printf("I: (%s) worker ready%s", $this->identity, PHP_EOL);
+            $this->logger->info("($this->identity) Worker Ready!");
             $this->workerProcess->send("READY");
 
             return true;
@@ -92,8 +100,8 @@ class HeartbeatWorker
         $heartbeatAt = microtime(true) + $this->config->getInterval();
         $poll        = new ZMQPoll();
         $poll->add($this->workerProcess, ZMQ::POLL_IN);
-        $liveness    = $this->config->getLiveness();
-        $interval    = $this->config->getInitInterval();
+        $liveness = $this->config->getLiveness();
+        $interval = $this->config->getInitInterval();
 
         // Main loop
         while (true) {
@@ -107,21 +115,21 @@ class HeartbeatWorker
                 $message->recv();
 
                 if ($message->parts() == 3) {
-                    printf("I: (%s) Responding to message - %s%s", $this->identity, $message->body(), PHP_EOL);
+                    $this->logger->info("($this->identity) Responding To Message", array($message->body()));
                     $response = $worker->run($message->body());
                     $message->setBody($response);
                     $message->send();
                     $liveness = $this->config->getLiveness();
                 } elseif ($message->parts() == 1 && $message->body() == 'HEARTBEAT') {
-                    printf('I: Got heartbeat from server!%s', PHP_EOL);
+                    $this->logger->info("($this->identity) Got heartbeat from server!");
                     $liveness = $this->config->getLiveness();
                 } else {
-                    printf("E: (%s) invalid message%s%s", $this->identity, PHP_EOL, $message->__toString());
+                    $this->logger->error("({$this->identity}) Invalid Message!", array($message->__toString()));
                 }
                 $interval = $this->config->getInitInterval();
             } elseif (--$liveness == 0) {
-                printf("W: (%s) heartbeat failure, can't reach queue%s", $this->identity, PHP_EOL);
-                printf("W: (%s) reconnecting in %d msec...%s", $this->identity, $this->config->getInterval(), PHP_EOL);
+                $this->logger->warning("($this->identity) Heartbeat failure! Can't reach queue!");
+                $this->logger->warning("($this->identity) Reconnecting in {$this->config->getInterval()} seconds!");
                 usleep($this->config->getInterval() * 1000 * 1000);
 
                 if ($interval < $this->config->getMaxInterval()) {
@@ -150,7 +158,7 @@ class HeartbeatWorker
         //  Send heartbeat to queue if it's time
         if (microtime(true) > $heartbeatAt) {
             $heartbeatAt = microtime(true) + $this->config->getInterval();
-            printf("I: (%s) worker heartbeat - %s%s", $this->identity, microtime(), PHP_EOL);
+            $this->logger->info("($this->identity) Sending heartbeat!");
             $this->workerProcess->send("HEARTBEAT");
         }
 

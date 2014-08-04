@@ -3,6 +3,7 @@
 namespace GeevCookie\ZMQ;
 
 use Iterator;
+use Psr\Log\LoggerInterface;
 
 /**
  * Class QueueIterator
@@ -14,6 +15,19 @@ class QueueIterator implements Iterator
      * @var array
      */
     private $queue = array();
+
+    /**
+     * @var LoggerInterface
+     */
+    private $logger;
+
+    /**
+     * @param LoggerInterface $logger
+     */
+    public function __construct(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+    }
 
     /**
      * Rewind the Iterator to the first element.
@@ -76,7 +90,7 @@ class QueueIterator implements Iterator
     public function appendWorker($identity, $interval, $liveness)
     {
         if (isset($this->queue[$identity])) {
-            printf("E: duplicate worker identity %s", $identity);
+            $this->logger->error("Duplicate worker identity!", array($identity));
         } else {
             $this->queue[$identity] = microtime(true) + $interval * $liveness;
         }
@@ -102,10 +116,12 @@ class QueueIterator implements Iterator
     public function refreshWorker($identity, $interval, $liveness)
     {
         if (!isset($this->queue[$identity])) {
-            printf("E: worker %s not ready\n", $identity);
-        } else {
-            $this->queue[$identity] = microtime(true) + $interval * $liveness;
+            // This only works if NO heartbeat has been sent by worker while the broker was offline.
+            // Quick restarts should still queue the workers correctly.
+            $this->logger->warning("Unknown Worker! Adding!", array($identity));
         }
+
+        $this->queue[$identity] = microtime(true) + $interval * $liveness;
     }
 
     /**
